@@ -5,12 +5,14 @@ from schema.user import User
 from cryptography.fernet import Fernet
 from starlette.status import HTTP_204_NO_CONTENT
 
+
 key = Fernet.generate_key()
 f = Fernet(key)
 user = APIRouter()
 
 @user.get("/users")
 def get_users():
+    
     datos_usuarios = conn.execute(users.select()).fetchall()
     columns_names = users.columns.keys()
     lista_de_diccionarios = [dict(zip(columns_names, fila)) for fila in datos_usuarios]
@@ -29,12 +31,14 @@ def get_user(id: str):
     data = conn.execute(users.select().where(users.c.id == id)).first()   
     return data._asdict()
 
-@user.delete('/users/delete/{id}')
+@user.delete('/users/{id}')
 def delete_user(id: str):
     conn.execute(users.delete().where(users.c.id == id))
     return Response(status_code=HTTP_204_NO_CONTENT)
 
-@user.put('/users/put/{id}')
+@user.put('/users/{id}')
 def update_user(id: str, usuario: User):
-    conn.execute(users.update().values(name = usuario.name, email = usuario.email, password = f.encrypt(usuario.password.encode("utf-8"))).where(users.c.id == id))
+    values = usuario.model_dump(exclude_unset=True)
+    values["password"] = f.encrypt(values['password'].encode("utf-8")) 
+    conn.execute(users.update().values(**values).where(users.c.id == id))
     return Response(status_code=HTTP_204_NO_CONTENT)
